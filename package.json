@@ -3,6 +3,6 @@
   "version": "0.0.1",
   "description": "",
   "dependencies": {
-    "lodash": "*"
+    "lodash": "3.10.1"
   }
 }
