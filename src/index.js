@@ -66,9 +66,11 @@ var atom = {},
 
   triggerChangesDebounced = _.debounce(triggerChanges, 10),
 
-  haveAttrChanged = function (context, attrs) {
+  haveAttrChanged = function (context, changedAttrs) {
     return !!_.find(context.atom.listeners, function (attr) {
-      return attrs.indexOf(attr) >= 0;
+      return _.find(changedAttrs, function (changedAttr) {
+        return attr.indexOf(changedAttr) === 0 || changedAttr.indexOf(attr) === 0;
+      });
     });
   },
 
