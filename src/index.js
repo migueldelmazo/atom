@@ -9,17 +9,16 @@ var atom = {},
   contexts = [],
 
   addContext = function (context) {
-    var contextAtom = context.atom;
-    if (contextAtom && contextAtom.listeners && contextAtom.onChange) {
-      contextAtom.listeners = _.flattenDeep(contextAtom.listeners);
+    var contextAtom = context.atomConf;
+    if (contextAtom && contextAtom.listeners) {
       contexts.push(context);
     }
   },
 
   removeContext = function (context) {
-    var contextAtom = context.atom,
+    var contextAtom = context.atomConf,
       idx;
-    if (contextAtom && contextAtom.listeners && contextAtom.onChange) {
+    if (contextAtom && contextAtom.listeners) {
       idx = contexts.indexOf(context);
       if (idx >= 0) {
         contexts.splice(idx, 1);
@@ -30,7 +29,7 @@ var atom = {},
   // initial values
 
   setInitialValues = function (context) {
-    _.each(_.get(context, 'atom.initialValues'), function (item) {
+    _.each(_.get(context, 'atomConf.initialValues'), function (item) {
       _.set(atom, item.attr, _.result(item, 'value'), item.options);
     });
   },
@@ -56,29 +55,42 @@ var atom = {},
   triggerChanges = function () {
     var attrs = getChangedAttrs();
     console.group('atom attrs changed', attrs);
-    _.each(contexts, function (context) {
-      if (haveAttrChanged(context, attrs)) {
-        triggerChangesToContext(context);
-      }
-    });
+    triggerChangesToContext(getFilteredListeners(attrs));
     console.groupEnd();
   },
 
-  triggerChangesDebounced = _.debounce(triggerChanges, 10),
+  getFilteredListeners = function (attrs) {
+    var listeners = [];
+    _.each(contexts, function (context) {
+      _.each(context.atomConf.listeners, function (listener) {
+        if (haveAttrChanged(listener.attrs, attrs)) {
+          listeners.push({
+            context,
+            onChange: listener.onChange
+          });
+        }
+      });
+    });
+    return listeners;
+  },
 
-  haveAttrChanged = function (context, changedAttrs) {
-    return !!_.find(context.atom.listeners, function (attr) {
+  haveAttrChanged = function (contextAttrs, changedAttrs) {
+    return !!_.find(contextAttrs, function (contextAttr) {
       return _.find(changedAttrs, function (changedAttr) {
-        return attr.indexOf(changedAttr) === 0 || changedAttr.indexOf(attr) === 0;
+        return contextAttr.indexOf(changedAttr) === 0 || changedAttr.indexOf(contextAttr) === 0;
       });
     });
   },
 
-  triggerChangesToContext = function (context) {
-    if (_.isFunction(context.atom.onChange)) {
-      context.atom.onChange.call(context);
+  triggerChangesToContext = function (filteredListeners) {
+    var listener;
+    while (filteredListeners.length) {
+      listener = filteredListeners.splice(0, 1);
+      _.result(listener[0].context, listener[0].onChange);
     }
-  };
+  },
+
+  triggerChangesDebounced = _.debounce(triggerChanges, 10);
 
 module.exports = {
 
