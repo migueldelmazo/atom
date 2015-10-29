@@ -66,7 +66,7 @@ var atom = {},
         if (haveAttrChanged(listener.attrs, attrs)) {
           listeners.push({
             context,
-            onChange: listener.onChange
+            cb: listener.cb
           });
         }
       });
@@ -85,8 +85,12 @@ var atom = {},
   triggerChangesToContext = function (filteredListeners) {
     var listener;
     while (filteredListeners.length) {
-      listener = filteredListeners.splice(0, 1);
-      _.result(listener[0].context, listener[0].onChange);
+      listener = filteredListeners.splice(0, 1)[0];
+      if (_.isString(listener.cb)) {
+        _.result(listener.context, listener.cb);
+      } else {
+        listener.cb.call(listener.context);
+      }
     }
   },
 
