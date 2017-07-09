@@ -12,12 +12,13 @@ Use setters and getters to manipulate the model
 
 ## Methods
 
+```javascript
+atom.on (context, definitions)
+```
+
 Observe changes in model
 
 - `context` where run observable method
 - `definition` semantic object
   -  `{ paths: ['pathProperty', 'other.pathProperty'], run: ['observableMethod', 'otherObservableMethod'] }`
 
-```javascript
-on (context, definitions)
-```
