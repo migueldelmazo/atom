@@ -1,221 +1,243 @@
-'use strict';
+const _ = require('lodash'),
 
-var _ = require('lodash');
-
-var atom = {},
+  atom = {},
 
   // contexts
 
   contexts = [],
 
-  addContext = function (context) {
-    var contextAtom = context.atomConf;
-    if (contextAtom && contextAtom.listeners) {
+  getContextIdx = (context) => {
+    let contextIdx = contexts.indexOf(context);
+    if (contextIdx < 0) {
+      context._observers = [];
       contexts.push(context);
+      contextIdx = contexts.length - 1;
+    }
+    return contextIdx;
+  },
+
+  parseDefinitionPaths = (definition) => {
+    definition.paths = _.isArray(definition.paths) ? _.flattenDeep(definition.paths) : [definition.paths];
+  },
+
+  parseDefinitionCallbacks = (definition) => {
+    definition.run = _.parseArray(definition.run);
+  },
+
+  isValidDefinition = (definition) => {
+    return isValidDefinitionPaths(definition.paths) && isValidDefinitionCallbacks(definition.run);
+  },
+
+  isValidDefinitionPaths = (paths) => {
+    return _.every(paths, _.isString);
+  },
+
+  isValidDefinitionCallbacks = (run) => {
+    return _.every(run, (runCallback) => _.isString(run) || _.isArray(run) || _.isFunction(run));
+  },
+
+  // paths
+
+  triggerChangesDebounced = (path) => {
+    changedPaths.push(path);
+    clearTimeout(onChangeTimer);
+    onChangeTimer = setTimeout(triggerChanges, 0);
+  },
+
+  triggerChanges = () => {
+    const atomPaths = _.uniq(changedPaths);
+    changedPaths = [];
+    console.group('atom.triggerChanges', { atom }, { atomPaths });
+    triggerChangesInContexts(atomPaths);
+    console.groupEnd('atom.triggerChanges');
+  },
+
+  triggerChangesInContexts = (atomPaths) => {
+    for (let contextIdx = 0; contextIdx < contexts.length; contextIdx += 1) {
+      const contextsLength = contexts.length;
+      triggerChangesInContext(contexts[contextIdx], atomPaths);
+      contextIdx += Math.min(contexts.length - contextsLength, 0);
+      contextIdx = Math.max(0, contextIdx);
     }
   },
 
-  removeContext = function (context) {
-    var contextAtom = context.atomConf,
-      idx;
-    if (contextAtom && contextAtom.listeners) {
-      idx = contexts.indexOf(context);
-      if (idx >= 0) {
-        contexts.splice(idx, 1);
-      }
+  triggerChangesInContext = (context, atomPaths) => {
+    _.each(context._observers, triggerChangesDefinition.bind(null, context, atomPaths));
+  },
+
+  triggerChangesDefinition = (context, atomPaths, definition) => {
+    if (triggerChangesPathsMatch(atomPaths, definition.paths)) {
+      triggerChangesCallback(context, definition);
     }
   },
 
-  // initial values
-
-  setInitialValues = function (context) {
-    _.each(_.get(context, 'atomConf.initialValues'), function (item) {
-      _.set(atom, item.attr, _.result(item, 'value'), item.options);
-    });
-  },
-
-  // on change
-
-  changedAttrs = [],
-
-  onChange = function (attr, options) {
-    if (!attr && options && options.silent) {
-      return;
-    }
-    changedAttrs.push(attr);
-    triggerChangesDebounced();
-  },
-
-  getChangedAttrs = function () {
-    var _changedAttrs = _.uniq(changedAttrs);
-    changedAttrs = [];
-    return _changedAttrs;
-  },
-
-  triggerChanges = function () {
-    var attrs = getChangedAttrs();
-    console.group('atom attrs changed', attrs);
-    triggerChangesToContext(getFilteredListeners(attrs));
-    console.groupEnd();
-  },
-
-  getFilteredListeners = function (attrs) {
-    var listeners = [];
-    _.each(contexts, function (context) {
-      _.each(context.atomConf.listeners, function (listener) {
-        if (haveAttrChanged(listener.attrs, attrs)) {
-          listeners.push({
-            context,
-            cb: listener.cb
-          });
-        }
+  triggerChangesPathsMatch = (atomPaths, definitionPaths) => {
+    return _.some(atomPaths, (atomPath) => {
+      return _.some(definitionPaths, (definitionPath) => {
+        return triggerChangesPathMatch(atomPath, definitionPath);
       });
     });
-    return listeners;
   },
 
-  haveAttrChanged = function (contextAttrs, changedAttrs) {
-    return !!_.find(contextAttrs, function (contextAttr) {
-      return _.find(changedAttrs, function (changedAttr) {
-        return contextAttr.indexOf(changedAttr) === 0 || changedAttr.indexOf(contextAttr) === 0;
-      });
+  triggerChangesPathMatch = (atomPath, definitionPath) => {
+    return atomPath === definitionPath ||
+      atomPath.indexOf(definitionPath + '.') === 0 ||
+      definitionPath.indexOf(atomPath + '.') === 0 ||
+      atomPath.indexOf(definitionPath + '[') === 0 ||
+      definitionPath.indexOf(atomPath + '[') === 0;
+  },
+
+  triggerChangesCallback = (context, definition) => {
+    _.each(definition.run, (callback) => {
+      _.run(context, callback, definition.options);
     });
   },
 
-  triggerChangesToContext = function (filteredListeners) {
-    var listener;
-    while (filteredListeners.length) {
-      listener = filteredListeners.splice(0, 1)[0];
-      if (_.isString(listener.cb)) {
-        _.result(listener.context, listener.cb);
-      } else {
-        listener.cb.call(listener.context);
-      }
-    }
+  // getters / setters
+
+  get = (path, defaultValue) => {
+    return _.get(atom, path, defaultValue);
   },
 
-  triggerChangesDebounced = _.debounce(triggerChanges, 10);
+  getClone = (path, defaultValue) => {
+    return _.cloneDeep(get(path, defaultValue));
+  },
+
+  set = (path, value) => {
+    if (_.isString(path) && !_.isEqual(get(path), value)) {
+      _.set(atom, path, value);
+      triggerChangesDebounced(path);
+      console.log('atom.set', { atom }, { path, value, atom });
+    }
+  };
+
+let changedPaths = [],
+  onChangeTimer;
 
 module.exports = {
 
-  // listeners
+  // observables
 
-  on (context) {
-    addContext(context);
-    setInitialValues(context);
-  },
-
-  off (context) {
-    removeContext(context);
-  },
-
-  // mixin
-
-  mixin (mixins) {
-    _.each(mixins, function (value, key) {
-      module.exports[key] = value.bind(module.exports);
+  on (context, definitions) {
+    const contextIdx = getContextIdx(context);
+    _.each(_.parseArray(definitions), (definition) => {
+      parseDefinitionPaths(definition);
+      parseDefinitionCallbacks(definition);
+      if (isValidDefinition(definition)) {
+        contexts[contextIdx]._observers.push(definition);
+      } else {
+        console.warning('atom.on > invalid definitions', definitions);
+      }
     });
   },
 
-  onChange (attr, options) {
-    onChange(attr, options);
-  },
-
-  // get/set values
-
-  del (attr, options) {
-    _.set(atom, attr, undefined);
-    onChange(attr, options);
-  },
-
-  get (attr, defaultValue) {
-    return _.get(atom, attr, defaultValue);
-  },
-
-  has (attr) {
-    return _.has(atom, attr);
-  },
-
-  set (attr, value, options) {
-    if (!_.isEqual(_.get(atom, attr), value)) {
-      _.set(atom, attr, value);
-      onChange(attr, options);
+  off (context) {
+    const idx = contexts.indexOf(context);
+    if (idx >= 0) {
+      contexts[idx]._observers = [];
+      contexts.splice(idx, 1);
     }
   },
 
-  // get/set collections
+  // paths
 
-  add (attr, value, options) {
-    var arr = _.get(atom, attr);
-    if (_.isArray(arr)) {
-      arr.splice(0, 0, value);
-      onChange(attr, options);
-    }
+  path (...paths) {
+    return _.compact(paths).join('.').replace(/\.\[/g, '[');
   },
 
-  at (attr, index, size) {
-    return _.at(_.get(atom, attr), index, size);
+  // mixins
+
+  mixin (mixins) {
+    _.each(mixins, function (value, key) {
+      this[key] = value.bind(this);
+    }.bind(this));
   },
 
-  concat (attr, value, options) {
-    var arr = _.get(atom, attr);
-    if (_.isArray(arr)) {
-      _.set(atom, attr, arr.concat(value));
-      onChange(attr, options);
-    }
+  // log
+
+  log () {
+    return _.cloneDeep(atom);
   },
 
-  pop (attr, options) {
-    var arr = _.get(atom, attr),
-      result;
-    if (_.isArray(arr)) {
-      result = arr.pop();
-      onChange(attr, options);
-    }
+  // getters
+
+  at (path, idx, defaultValue) {
+    return _.get(getClone(path + '[' + idx + ']'), defaultValue);
+  },
+
+  filter (path, predicate) {
+    return _.filter(getClone(path, []), predicate);
+  },
+
+  find (path, predicate, defaultValue) {
+    return _.find(getClone(path, []), predicate) || defaultValue;
+  },
+
+  get: getClone,
+
+  has (path) {
+    return _.has(atom, path);
+  },
+
+  isEmpty (path) {
+    return _.isEmpty(get(path));
+  },
+
+  pluck (path, property) {
+    return _.map(getClone(path, []), property);
+  },
+
+  size (path) {
+    return _.size(get(path));
+  },
+
+  // setters
+
+  concat (path, value = []) {
+    set(path, getClone(path, []).concat(_.parseArray(value)));
+  },
+
+  pop (path, defaultValue) {
+    const collection = getClone(path);
+    set(path, _.initial(collection));
+    return _.last(collection) || defaultValue;
+  },
+
+  push (path, value) {
+    const clonedValue = getClone(path, []);
+    clonedValue.push(value);
+    set(path, clonedValue);
+  },
+
+  remove (path, predicate) {
+    let collection = getClone(path);
+    const result = _.remove(collection, predicate);
+    set(path, collection);
     return result;
   },
 
-  push (attr, value, options) {
-    var arr = _.get(atom, attr);
-    if (_.isArray(arr)) {
-      arr.push(value);
-      onChange(attr, options);
-    }
+  reset (path, value = []) {
+    set(path, _.parseArray(value));
   },
 
-  remove (attr, where, options) {
-    var arr = _.get(atom, attr),
-      idx = _.findIndex(arr, where);
+  set,
+
+  toggle (path, status) {
+    set(path, status === undefined ? !get(path) : status);
+  },
+
+  unset (path) {
+    set(path, undefined);
+  },
+
+  update (path, value, predicate) {
+    const collection = getClone(path),
+      idx = _.findIndex(collection, predicate);
     if (idx >= 0) {
-      arr.splice(idx, 1);
-      onChange(attr, options);
-    }
-  },
-
-  reset (attr, value, options) {
-    if (value === undefined) {
-      value = [];
-    } else if (!_.isArray(value)) {
-      value = [value];
-    }
-    _.set(attr, value);
-    onChange(attr, options);
-  },
-
-  size (attr) {
-    return _.size(_.get(atom, attr));
-  },
-
-  update (attr, where, value, options) {
-    var arr = _.get(atom, attr),
-      item = _.find(arr, where);
-    if (item) {
-      _.merge(item, value);
-      onChange(attr, options);
+      set(path + '[' + idx + ']', value);
+    } else if (_.isArray(collection)) {
+      this.push(path, value);
     }
   }
 
 };
-
-window.Atom = module.exports;
-window.atom = atom;

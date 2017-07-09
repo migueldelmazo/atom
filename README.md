@@ -1,4 +1,3 @@
-#Atom
+# Atom
 
-This is a data modeling library to support reactWrapper project
-
+## Reactive Data Model (es6)
