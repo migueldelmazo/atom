@@ -18,5 +18,8 @@ atom.on (context, definitions) // observe changes in model
 
 - `context` where run observable method
 - `definition` semantic object
-  -  `{ paths: ['pathProperty', 'other.pathProperty'], run: ['observableMethod', 'otherObservableMethod'] }`
+  -  `{ paths: ['pathProperty', 'other.pathProperty'], run: ['observableMethod', 'otherObservableMethod'] }` // paths uses dot notation
 
+```javascript
+atom.off (context) // stop observing changes in the model
+```
