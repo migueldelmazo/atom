@@ -13,10 +13,8 @@ Use setters and getters to manipulate the model
 ## Methods
 
 ```javascript
-atom.on (context, definitions)
+atom.on (context, definitions) // observe changes in model
 ```
-
-Observe changes in model
 
 - `context` where run observable method
 - `definition` semantic object
