@@ -53,6 +53,7 @@ atom.off(context) // unsubscribes a method from the model
   - run: method to run when path's value changes
     - [string|function|array of strings and functions]
     - if method is a string atom find a method with this name in the context
+    - run method is executed when a parent or a child of the path changes
 
 ### Getters
 
