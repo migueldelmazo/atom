@@ -45,11 +45,64 @@ atom.off(context) // unsubscribes a method from the model
 
 ```
 
-context: context where run observable method
+- context: context where run observable method
   - [object|class instance|undefined]
-definitions: an object with properties
-- paths: path to observe
-  - [string|array of strings]
-- run: method to run when path's value changes
-  - [string|function|array of strings and functions]
-  - if method is a string atom find this a method with this name in the context
+- definitions: an object with properties
+  - paths: path to observe
+    - [string|array of strings]
+  - run: method to run when path's value changes
+    - [string|function|array of strings and functions]
+    - if method is a string atom find this a method with this name in the context
+
+### getters
+
+```javascript
+at(path, idx, defaultValue)
+
+filter(path, predicate)
+
+find(path, predicate, defaultValue)
+
+get(path)
+
+has(path)
+
+isEmpty(path)
+
+pluck(path, property)
+
+size(path)
+```
+
+### setters
+
+```javascript
+concat(path, value = [])
+
+pop(path, defaultValue)
+
+push(path, value)
+
+remove(path, predicate)
+
+reset(path, value = [])
+
+set(path, value)
+
+toggle(path, status)
+
+unset(path)
+
+update(path, value, predicate)
+```
+
+### helpers
+
+```javascript
+
+path(...paths) // returns a path in string with dot notation
+
+mixin(mixins) // add mixins to atom
+
+log() // returns a copy of model
+```
