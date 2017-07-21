@@ -33,12 +33,23 @@ Atom helps you to apply the observer/observable pattern in a Javascript applicat
 
 The propagation of the changes is done in the next Javascript thread, therefore, it minimizes the number of times the data is propagated and saves memory in the call stack.
 
-Uses dot notation to access model elements
+Uses dot notation to access model elements.
 
 ## Methods
 
 ### Observer/observable
 
 ```javascript
-atom.on (context, definitions) // subscribes a method and a model path
+atom.on(context, definitions) // subscribes a method and a model path
+atom.off(context) // unsubscribes a method from the model
+
 ```
+
+context: context where run observable method
+  - [object|class instance|undefined]
+definitions: an object with properties
+- paths: path to observe
+  - [string|array of strings]
+- run: method to run when path's value changes
+  - [string|function|array of strings and functions]
+  - if method is a string atom find this a method with this name in the context
