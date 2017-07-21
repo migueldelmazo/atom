@@ -52,9 +52,9 @@ atom.off(context) // unsubscribes a method from the model
     - [string|array of strings]
   - run: method to run when path's value changes
     - [string|function|array of strings and functions]
-    - if method is a string atom find this a method with this name in the context
+    - if method is a string atom find a method with this name in the context
 
-### getters
+### Getters
 
 ```javascript
 at(path, idx, defaultValue)
@@ -74,7 +74,7 @@ pluck(path, property)
 size(path)
 ```
 
-### setters
+### Setters
 
 ```javascript
 concat(path, value = [])
@@ -96,7 +96,7 @@ unset(path)
 update(path, value, predicate)
 ```
 
-### helpers
+### Helpers
 
 ```javascript
 
