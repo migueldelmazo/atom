@@ -17,11 +17,13 @@ const _ = require('lodash'),
   },
 
   parseDefinitionPaths = (definition) => {
-    definition.paths = _.isArray(definition.paths) ? _.flattenDeep(definition.paths) : [definition.paths];
+    definition.paths = _.isArray(definition.paths)
+      ? _.flattenDeep(definition.paths)
+      : [definition.paths];
   },
 
   parseDefinitionCallbacks = (definition) => {
-    definition.run = _.parseArray(definition.run);
+    definition.run = parseArray(definition.run);
   },
 
   isValidDefinition = (definition) => {
@@ -33,7 +35,7 @@ const _ = require('lodash'),
   },
 
   isValidDefinitionCallbacks = (run) => {
-    return _.every(run, (runCallback) => _.isString(run) || _.isArray(run) || _.isFunction(run));
+    return _.every(run, (runCallback) => _.isString(runCallback) || _.isArray(runCallback) || _.isFunction(runCallback));
   },
 
   // paths
@@ -47,9 +49,7 @@ const _ = require('lodash'),
   triggerChanges = () => {
     const atomPaths = _.uniq(changedPaths);
     changedPaths = [];
-    console.group('atom.triggerChanges', { atom }, { atomPaths });
     triggerChangesInContexts(atomPaths);
-    console.groupEnd('atom.triggerChanges');
   },
 
   triggerChangesInContexts = (atomPaths) => {
@@ -89,7 +89,11 @@ const _ = require('lodash'),
 
   triggerChangesCallback = (context, definition) => {
     _.each(definition.run, (callback) => {
-      _.run(context, callback, definition.options);
+      if (_.isFunction(callback)) {
+        callback.call(context);
+      } else if (_.isString(callback) && _.isFunction(context[callback])) {
+        context[callback].call(context);
+      }
     });
   },
 
@@ -107,9 +111,12 @@ const _ = require('lodash'),
     if (_.isString(path) && !_.isEqual(get(path), value)) {
       _.set(atom, path, value);
       triggerChangesDebounced(path);
-      console.log('atom.set', { atom }, { path, value, atom });
     }
-  };
+  },
+
+  // helpers
+
+  parseArray = (arr) => _.isArray(arr) ? arr : [arr];
 
 let changedPaths = [],
   onChangeTimer;
@@ -120,13 +127,13 @@ module.exports = {
 
   on (context, definitions) {
     const contextIdx = getContextIdx(context);
-    _.each(_.parseArray(definitions), (definition) => {
+    _.each(parseArray(definitions), (definition) => {
       parseDefinitionPaths(definition);
       parseDefinitionCallbacks(definition);
       if (isValidDefinition(definition)) {
         contexts[contextIdx]._observers.push(definition);
       } else {
-        console.warning('atom.on > invalid definitions', definitions);
+        throw new Error('atom.on > invalid definitions', definitions);
       }
     });
   },
@@ -194,7 +201,7 @@ module.exports = {
   // setters
 
   concat (path, value = []) {
-    set(path, getClone(path, []).concat(_.parseArray(value)));
+    set(path, getClone(path, []).concat(parseArray(value)));
   },
 
   pop (path, defaultValue) {
@@ -210,14 +217,14 @@ module.exports = {
   },
 
   remove (path, predicate) {
-    let collection = getClone(path);
-    const result = _.remove(collection, predicate);
+    const collection = getClone(path),
+      result = _.remove(collection, predicate);
     set(path, collection);
     return result;
   },
 
   reset (path, value = []) {
-    set(path, _.parseArray(value));
+    set(path, parseArray(value));
   },
 
   set,

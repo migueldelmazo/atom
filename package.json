@@ -1,13 +1,20 @@
 {
   "name": "atom",
-  "description": "Reactive Data Model",
+  "description": "Reactive Data Model (es6)",
   "version": "0.0.1",
   "main": "src/index.js",
   "authors": [
-    "Miguel del Mazo <info@migueldelmazo.com>",
+    "Miguel del Mazo <info@migueldelmazo.com>"
   ],
   "license": "UNLICENSED",
+  "scripts": {
+    "examples": "node examples/get-set.js && node examples/observer.js",
+    "lint": "./node_modules/.bin/eslint ./**/*.js"
+  },
   "dependencies": {
     "lodash": "^4.17.4"
+  },
+  "devDependencies": {
+    "eslint": "^4.3.0"
   }
 }
