@@ -35,6 +35,18 @@ The propagation of the changes is done in the next Javascript thread, therefore,
 
 Uses dot notation to access model elements.
 
+## Examples
+
+```javascript
+npm run examples
+```
+
+## Lint
+
+```javascript
+npm run lint
+```
+
 ## Methods
 
 ### Observer/observable
